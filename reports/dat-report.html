@@ -192,22 +192,6 @@ $(document).ready(function () {
 </div>
 
 
-<pre class="r"><code>library(tidyverse)</code></pre>
-<pre><code>## ── Attaching packages ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
-<pre><code>## ✔ ggplot2 3.1.0       ✔ purrr   0.3.1  
-## ✔ tibble  2.0.1       ✔ dplyr   0.8.0.1
-## ✔ tidyr   0.8.3       ✔ stringr 1.4.0  
-## ✔ readr   1.3.1       ✔ forcats 0.4.0</code></pre>
-<pre><code>## ── Conflicts ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
-## ✖ dplyr::filter() masks stats::filter()
-## ✖ dplyr::lag()    masks stats::lag()</code></pre>
-<pre class="r"><code>library(lubridate)</code></pre>
-<pre><code>## 
-## Attaching package: 'lubridate'</code></pre>
-<pre><code>## The following object is masked from 'package:base':
-## 
-##     date</code></pre>
-<pre class="r"><code>theme_set(theme_bw())</code></pre>
 <div id="o-que-e-o-dado" class="section level3">
 <h3>O que é o dado?</h3>
 <p>Existem 9 variáveis nos dados sendo elas:</p>
@@ -222,20 +206,61 @@ $(document).ready(function () {
 <li>first_click : A posição do link da página visitada no mecanismo de busca de páginas</li>
 <li>session_length : A duração em segundos da sessão</li>
 </ul>
+<pre class="r"><code>events &lt;- read_csv(&quot;https://github.com/wikimedia-research/Discovery-Hiring-Analyst-2016/raw/master/events_log.csv.gz&quot;)</code></pre>
+<pre><code>## Parsed with column specification:
+## cols(
+##   uuid = col_character(),
+##   timestamp = col_double(),
+##   session_id = col_character(),
+##   group = col_character(),
+##   action = col_character(),
+##   checkin = col_double(),
+##   page_id = col_character(),
+##   n_results = col_double(),
+##   result_position = col_double()
+## )</code></pre>
+<pre class="r"><code>events &lt;- events %&gt;% slice(1:5e4) # Útil para testar código em dados pequenos. Comente na hora de processá-los para valer.
+
+events &lt;- events %&gt;% 
+    group_by(session_id) %&gt;% 
+    arrange(timestamp) %&gt;% 
+    mutate(search_index = cumsum(action == &quot;searchResultPage&quot;), # contador de buscas na sessão.
+           date = ymd_hms(timestamp))  %&gt;% 
+    ungroup()
+
+glimpse(events)</code></pre>
+<pre><code>## Observations: 50,000
+## Variables: 11
+## $ uuid            &lt;chr&gt; &quot;0bf4725a1406529f92528dd18d88f43f&quot;, &quot;18184b7ac20…
+## $ timestamp       &lt;dbl&gt; 2.01603e+13, 2.01603e+13, 2.01603e+13, 2.01603e+…
+## $ session_id      &lt;chr&gt; &quot;23ca1f966a29d591&quot;, &quot;cbba9a98ba7b20cc&quot;, &quot;e27e778…
+## $ group           &lt;chr&gt; &quot;a&quot;, &quot;a&quot;, &quot;b&quot;, &quot;b&quot;, &quot;b&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;b&quot;…
+## $ action          &lt;chr&gt; &quot;checkin&quot;, &quot;searchResultPage&quot;, &quot;checkin&quot;, &quot;check…
+## $ checkin         &lt;dbl&gt; 20, NA, 210, 210, NA, NA, NA, 10, 10, 300, 40, 3…
+## $ page_id         &lt;chr&gt; &quot;f30875d969cd0452&quot;, &quot;f80cd127b1f48808&quot;, &quot;83d7436…
+## $ n_results       &lt;dbl&gt; NA, 20, NA, NA, 20, NA, 0, NA, NA, NA, NA, NA, N…
+## $ result_position &lt;dbl&gt; 2, NA, 1, 5, NA, 11, NA, 2, 3, 1, 1, 1, NA, NA, …
+## $ search_index    &lt;int&gt; 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+## $ date            &lt;dttm&gt; 2016-03-01 00:00:07, 2016-03-01 00:00:12, 2016-…</code></pre>
 </div>
 <div id="o-que-queremos-saber-sobre-ele" class="section level3">
 <h3>O que queremos saber sobre ele?</h3>
-<div id="what-is-our-daily-overall-clickthrough-rate-how-does-it-vary-between-the-groups" class="section level4">
-<h4>What is our daily overall clickthrough rate? How does it vary between the groups?</h4>
+<div id="qual-a-nossa-taxa-diaria-de-clickthrough-rate-como-isso-varia-entre-os-grupos" class="section level4">
+<h4>Qual a nossa taxa diária de clickthrough rate? Como isso varia entre os grupos?</h4>
+<p>O Discovery Department da Wikimedia define <code>clickthrough rate</code> como a proporção de sessões onde o usuário clicou em um dos resultados mostrados.</p>
+<pre class="r"><code>#criar coluna clickthrough</code></pre>
 </div>
-<div id="which-results-do-people-tend-to-try-first-how-does-it-change-day-to-day" class="section level4">
-<h4>Which results do people tend to try first? How does it change day-to-day?</h4>
+<div id="quais-resultados-as-pessoas-tendem-a-clicar-primeiro-como-isso-muda-no-dia-a-dia" class="section level4">
+<h4>Quais resultados as pessoas tendem a clicar primeiro? Como isso muda no dia-a-dia?</h4>
 </div>
-<div id="what-is-our-daily-overall-zero-results-rate-how-does-it-vary-between-the-groups" class="section level4">
-<h4>What is our daily overall zero results rate? How does it vary between the groups?</h4>
+<div id="qual-a-nossa-taxa-diaria-de-zero-results-rate-como-isso-varia-entre-os-grupos" class="section level4">
+<h4>Qual a nossa taxa diária de zero results rate? Como isso varia entre os grupos?</h4>
+<p>O Discovery Department da Wikimedia define <code>zero results rate</code> como a proporção de buscas que retornou 0 resultados.</p>
+<pre class="r"><code>#criar coluna zeroresults</code></pre>
 </div>
-<div id="let-session-length-be-approximately-the-time-between-the-first-event-and-the-last-event-in-a-session.-choose-a-variable-from-the-dataset-and-describe-its-relationship-to-session-length.-visualize-the-relationship." class="section level4">
-<h4>Let session length be approximately the time between the first event and the last event in a session. Choose a variable from the dataset and describe its relationship to session length. Visualize the relationship.</h4>
+<div id="considere-a-duracao-de-cada-sessao-aproximadamente-o-tempo-entre-o-primeiro-e-ultimo-evento-de-uma-sessao.-escolha-uma-variavel-do-conjunto-de-dados-e-descreva-a-relacao-com-o-tamanho-da-sessao.-visualise-o-relacionamento." class="section level4">
+<h4>Considere a duração de cada sessão aproximadamente o tempo entre o primeiro e último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva a relação com o tamanho da sessão. Visualise o relacionamento.</h4>
+<pre class="r"><code>#criar coluna session_duration</code></pre>
 </div>
 </div>
 

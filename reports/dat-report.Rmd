@@ -28,7 +28,7 @@ Existem 9 variáveis nos dados sendo elas:
 * session_length : A duração em segundos da sessão
 
 ```{r ETL}
-events <- read_csv("https://github.com/wikimedia-research/Discovery-Hiring-Analyst-2016/raw/master/events_log.csv.gz")
+events <- read_csv("https://github.com/fpcc2/wikimedia-sessions/blob/master/data/search_data.csv")
 
 events <- events %>% slice(1:5e4) # Útil para testar código em dados pequenos. Comente na hora de processá-los para valer.
 
@@ -39,7 +39,7 @@ events <- events %>%
            date = ymd_hms(timestamp))  %>% 
     ungroup()
 
-glimpse(events)
+#glimpse(events)
 ```
 
 
@@ -61,3 +61,8 @@ O Discovery Department da Wikimedia define `zero results rate` como a proporçã
 ```
 
 #### Considere a duração de cada sessão aproximadamente o tempo entre o primeiro e último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva a relação com o tamanho da sessão. Visualise o relacionamento.
+
+```{r}
+#criar coluna session_duration
+```
+
