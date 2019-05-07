@@ -28,16 +28,19 @@ Existem 9 variáveis nos dados sendo elas:
 * session_length : A duração em segundos da sessão
 
 ```{r ETL}
-events <- read_csv("../data/search_data.csv")
+
+buscas <- read_csv("../data/search_data.csv")
+
+events <- read_csv("https://github.com/wikimedia-research/Discovery-Hiring-Analyst-2016/raw/master/events_log.csv.gz")
 
 events <- events %>% slice(1:5e4) # Útil para testar código em dados pequenos. Comente na hora de processá-los para valer.
 
-#events <- events %>% 
-#    group_by(session_id) %>% 
-#    arrange(timestamp) %>% 
-#    mutate(search_index = cumsum(action == "searchResultPage"), # contador de buscas na sessão.
-#           date = ymd_hms(timestamp))  %>% 
-#    ungroup()
+events <- events %>% 
+    group_by(session_id) %>% 
+    arrange(timestamp) %>% 
+    mutate(search_index = cumsum(action == "searchResultPage"), # contador de buscas na sessão.
+           date = ymd_hms(timestamp))  %>% 
+    ungroup()
 
 #glimpse(events)
 ```
@@ -46,29 +49,58 @@ events <- events %>% slice(1:5e4) # Útil para testar código em dados pequenos.
 ### O que queremos saber sobre ele?
 
 #### Qual a nossa taxa diária de clickthrough rate? Como isso varia entre os grupos?
-O Discovery Department da Wikimedia define `clickthrough rate` como a proporção de sessões onde o usuário clicou em um dos resultados mostrados.
-```{r}
-#criar coluna clickthrough
-events <- events %>%
-    mutate(clickthrough_rate = num_clicks/results)
 
-events %>%
-    ggplot(aes(num_clicks,results)) +
-    geom_jitter(alpha = .2) + 
-    #geom_hline(yintercept = , linetype='dashed')+
-    facet_wrap(~group)
+O Discovery Department da Wikimedia define `clickthrough rate` como a proporção de sessões onde o usuário clicou em um dos resultados mostrados.
+
+```{r}
+buscas <- buscas %>%
+    mutate(date = round_date(session_start_date, unit = "day"))
+
+buscas %>%
+    group_by(date) %>%
+    summarise(clickthrough_rate = sum(num_clicks > 0)/n()) %>%
+    ggplot(aes(date,clickthrough_rate)) +
+    geom_point(alpha = .7) +
+    geom_line() +
+    labs(x="Data", y="Clickthrough Rate") 
 ```
 
+```{r}
+buscas %>%
+    group_by(date, group) %>%
+    summarise(clickthrough_rate = sum(num_clicks > 0)/n()) %>%
+    ggplot(aes(date,clickthrough_rate, color = group)) +
+    geom_point(alpha = .7) +
+    geom_line() +
+    labs(x="Data", y="Clickthrough Rate", colour = "Grupo") 
+```
 
 #### Quais resultados as pessoas tendem a clicar primeiro? Como isso muda no dia-a-dia?
+
+```{r}
+
+```
     
 #### Qual a nossa taxa diária de zero results rate? Como isso varia entre os grupos?
 O Discovery Department da Wikimedia define `zero results rate` como a proporção de buscas que retornou 0 resultados.
 ```{r}
-#criar coluna zeroresults
-events <- events %>%
-    group_by(group) %>%
-    mutate(zero_results = (results == 0)/n())
+buscas %>%
+    group_by(date) %>%
+    summarise(zero_results = sum(results == 0)/n()) %>%
+    ggplot(aes(date,zero_results)) +
+    geom_point(alpha = .7) +
+    geom_line() +
+    labs(x="Data", y="Zero Results") 
+```
+
+```{r}
+buscas %>%
+    group_by(date, group) %>%
+    summarise(zero_results = sum(results == 0)/n()) %>%
+    ggplot(aes(date,zero_results, color = group)) +
+    geom_point(alpha = .7) +
+    geom_line() +
+    labs(x="Data", y="Zero Results", color = "Grupo") 
 ```
 
 #### Considere a duração de cada sessão aproximadamente o tempo entre o primeiro e último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva a relação com o tamanho da sessão. Visualise o relacionamento.
