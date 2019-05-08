@@ -31,16 +31,16 @@ Existem 9 variáveis nos dados sendo elas:
 
 buscas <- read_csv("../data/search_data.csv")
 
-events <- read_csv("https://github.com/wikimedia-research/Discovery-Hiring-Analyst-2016/raw/master/events_log.csv.gz")
+#events <- read_csv("https://github.com/wikimedia-research/Discovery-Hiring-Analyst-2016/raw/master/events_log.csv.gz")
 
-events <- events %>% slice(1:5e4) # Útil para testar código em dados pequenos. Comente na hora de processá-los para valer.
+#events <- events %>% slice(1:5e4) # Útil para testar código em dados pequenos. Comente na hora de processá-los para valer.
 
-events <- events %>% 
-    group_by(session_id) %>% 
-    arrange(timestamp) %>% 
-    mutate(search_index = cumsum(action == "searchResultPage"), # contador de buscas na sessão.
-           date = ymd_hms(timestamp))  %>% 
-    ungroup()
+#events <- events %>% 
+#    group_by(session_id) %>% 
+#    arrange(timestamp) %>% 
+#    mutate(search_index = cumsum(action == "searchResultPage"), # contador de buscas na sessão.
+#           date = ymd_hms(timestamp))  %>% 
+#    ungroup()
 
 #glimpse(events)
 ```
@@ -78,11 +78,39 @@ buscas %>%
 #### Quais resultados as pessoas tendem a clicar primeiro? Como isso muda no dia-a-dia?
 
 ```{r}
-
+buscas %>%
+    filter(!is.na(first_click)) %>%
+    ggplot(aes(first_click)) +
+    geom_histogram() +
+    scale_x_log10() +
+    labs(x="Primeiro Clique", y="Contagem")
 ```
-    
+
+```{r}
+buscas %>%
+    group_by(date, first_click) %>%
+    filter(!is.na(first_click)) %>%
+    summarise(mean = mean(first_click)) %>%
+    ggplot(aes(date, mean)) +
+    geom_bar(stat = "identity") +
+    labs(x="Data", y="Primeiro Clique")
+```
+
+```{r}
+buscas %>%
+    group_by(date, first_click) %>%
+    filter(first_click > 1) %>%
+    summarise(mean = mean(first_click)) %>%
+    ggplot(aes(as.factor(date), first_click)) +
+    geom_boxplot() +
+    scale_y_log10() +
+    labs(x="Data", y="Primeiro Clique")
+```
+
 #### Qual a nossa taxa diária de zero results rate? Como isso varia entre os grupos?
+
 O Discovery Department da Wikimedia define `zero results rate` como a proporção de buscas que retornou 0 resultados.
+
 ```{r}
 buscas %>%
     group_by(date) %>%
