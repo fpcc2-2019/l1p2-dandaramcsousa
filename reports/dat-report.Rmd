@@ -31,18 +31,27 @@ Existem 9 variáveis nos dados sendo elas:
 
 buscas <- read_csv("../data/search_data.csv")
 
-#events <- read_csv("https://github.com/wikimedia-research/Discovery-Hiring-Analyst-2016/raw/master/events_log.csv.gz")
+buscas %>%
+    ggplot(aes(group)) +
+    geom_bar() +
+    labs(x="Grupo", y="Contagem") 
 
-#events <- events %>% slice(1:5e4) # Útil para testar código em dados pequenos. Comente na hora de processá-los para valer.
+```
 
-#events <- events %>% 
-#    group_by(session_id) %>% 
-#    arrange(timestamp) %>% 
-#    mutate(search_index = cumsum(action == "searchResultPage"), # contador de buscas na sessão.
-#           date = ymd_hms(timestamp))  %>% 
-#    ungroup()
+Por termos um desnível entre participação do grupo A e o grupo B. Vamos retirar aleatoriamente casos do número A para uma comparação mais justas entre grupos.
 
-#glimpse(events)
+```{r}
+buscas_b <- buscas %>%
+    filter(group == "b")
+
+b_lenght <- nrow(buscas_b)
+
+buscas_a <- buscas %>%
+    filter(group == "a")
+
+buscas_a <- buscas_a[sample(nrow(buscas_a),b_lenght),]
+
+buscas_igualadas <- rbind(buscas_a, buscas_b)
 ```
 
 
@@ -50,13 +59,13 @@ buscas <- read_csv("../data/search_data.csv")
 
 #### Qual a nossa taxa diária de clickthrough rate? Como isso varia entre os grupos?
 
-O Discovery Department da Wikimedia define `clickthrough rate` como a proporção de sessões onde o usuário clicou em um dos resultados mostrados.
+O Discovery Department da Wikimedia define `clickthrough rate` como a proporção de sessões onde o usuário clicou em um dos resultados mostrados. Com base nisso, o gráfico abaixo mostra a relação entre o clickthrough rate em cada dia. É possível ver que não há um padrão geral, mas que em no máximo 25% da sessões o usuário clica em algum resultado mostrado.
 
 ```{r}
-buscas <- buscas %>%
+buscas_igualadas <- buscas_igualadas %>%
     mutate(date = round_date(session_start_date, unit = "day"))
 
-buscas %>%
+buscas_igualadas %>%
     group_by(date) %>%
     summarise(clickthrough_rate = sum(num_clicks > 0)/n()) %>%
     ggplot(aes(date,clickthrough_rate)) +
@@ -65,8 +74,9 @@ buscas %>%
     labs(x="Data", y="Clickthrough Rate") 
 ```
 
+Em relação a grupos, fica muito visível a diferença de comportamento entre eles. Enquanto o grupo A tende a interagir mais em suas pesquisas através dos cliques. O grupo B tem uma taxa bem inferior.
 ```{r}
-buscas %>%
+buscas_igualadas %>%
     group_by(date, group) %>%
     summarise(clickthrough_rate = sum(num_clicks > 0)/n()) %>%
     ggplot(aes(date,clickthrough_rate, color = group)) +
@@ -77,42 +87,37 @@ buscas %>%
 
 #### Quais resultados as pessoas tendem a clicar primeiro? Como isso muda no dia-a-dia?
 
+É esperado que as pessoas cliquem em geral no primeiro resultado que aparece uma vez que ele é o provável mais relevante naquele tipo de pesquisa. Então, além do comportamento padrão, qual seria o próximo?
+
 ```{r}
-buscas %>%
+buscas_igualadas %>%
     filter(!is.na(first_click)) %>%
     ggplot(aes(first_click)) +
     geom_histogram() +
     scale_x_log10() +
+    facet_wrap(~date) + 
     labs(x="Primeiro Clique", y="Contagem")
 ```
 
+Abaixo percebemos que os primeiros links ainda são os mais vistos. É mais provável que o usuário nem chegue a segunda página da sua pesquisa.
 ```{r}
-buscas %>%
-    group_by(date, first_click) %>%
-    filter(!is.na(first_click)) %>%
-    summarise(mean = mean(first_click)) %>%
-    ggplot(aes(date, mean)) +
-    geom_bar(stat = "identity") +
-    labs(x="Data", y="Primeiro Clique")
-```
-
-```{r}
-buscas %>%
+buscas_igualadas %>%
     group_by(date, first_click) %>%
     filter(first_click > 1) %>%
-    summarise(mean = mean(first_click)) %>%
-    ggplot(aes(as.factor(date), first_click)) +
-    geom_boxplot() +
-    scale_y_log10() +
-    labs(x="Data", y="Primeiro Clique")
+    ggplot(aes(first_click)) +
+    geom_histogram() +
+    scale_x_log10() +
+    facet_wrap(~date) + 
+    labs(x="Primeiro Clique", y="Contagem")
 ```
+
 
 #### Qual a nossa taxa diária de zero results rate? Como isso varia entre os grupos?
 
-O Discovery Department da Wikimedia define `zero results rate` como a proporção de buscas que retornou 0 resultados.
+O Discovery Department da Wikimedia define `zero results rate` como a proporção de buscas que retornou 0 resultados. A taxa diária é bem baixa, em geral menos de 20% quando analisamos sem distinção de grupos. Com a distinção podemos observar que não parece ter uma relação entre grupo de retorno zerado de resultados.
 
 ```{r}
-buscas %>%
+buscas_igualadas %>%
     group_by(date) %>%
     summarise(zero_results = sum(results == 0)/n()) %>%
     ggplot(aes(date,zero_results)) +
@@ -122,7 +127,7 @@ buscas %>%
 ```
 
 ```{r}
-buscas %>%
+buscas_igualadas %>%
     group_by(date, group) %>%
     summarise(zero_results = sum(results == 0)/n()) %>%
     ggplot(aes(date,zero_results, color = group)) +
@@ -131,9 +136,26 @@ buscas %>%
     labs(x="Data", y="Zero Results", color = "Grupo") 
 ```
 
+
 #### Considere a duração de cada sessão aproximadamente o tempo entre o primeiro e último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva a relação com o tamanho da sessão. Visualise o relacionamento.
 
+Aqui, a observação será entre o tamanho da sessão e e número de cliques que o usuário deu naquela sessão. Para isso, consideraremos sessões com tamanho maior que 0 por serem sessões onde possivelmente o usuário teve a chance de interagir com a busca.
+
 ```{r}
-#criar coluna session_duration
+buscas_igualadas %>%
+    filter(session_length > 0) %>%
+    ggplot(aes(num_clicks, session_length)) +
+    geom_jitter() +
+    labs(x="Número de Cliques", y="Tamanho da Sessão") 
+    
 ```
 
+É notável um fato exorbitante de algumas poucas sessões com tamanho maior que 50000. Retirando esta parte para analisar o resto é visto que o usuário tende a passar menos tempo numa sessão quando ele clica muito nos resultados da busca. O que é algo positivo, afinal de conta podemos interpretar que ele encontrou resultados interessantes e passou menos tempo na página de busca.
+```{r}
+buscas_igualadas %>%
+    filter(session_length > 0, session_length < 50000) %>%
+    ggplot(aes(num_clicks, session_length)) +
+    geom_jitter()+
+    labs(x="Número de Cliques", y="Tamanho da Sessão") 
+    
+```
