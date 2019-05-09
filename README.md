@@ -1,3 +1,6 @@
+O resultado encontra-se em: http://rpubs.com/dandaramcsousa/wikimedia-explore
+
+
 # Sessões, buscas e navegação na wikimedia
 
 Este repo é a semente para uma análise de padrões de busca e navegação em páginas de projetos da wikimedia (provavelmente wikipedia).
