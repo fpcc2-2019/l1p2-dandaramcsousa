@@ -1,0 +1,86 @@
+---
+title: "p-valores x ICs"
+output:
+  html_document:
+    df_print: paged
+author: "Dandara Sousa"
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(perm)
+library(boot)
+library(broom)
+theme_set(theme_bw())
+```
+
+O PROBLEMA
+Considerando que os dados da wikimedia que usamos no Laboratório 2, faça uma inferência sobre como é, na população de todas as sessões do site:
+1. A diferença entre o clickthrough rate dos grupos A e B; e
+2. A diferença na proporção buscas com zero resultados nos grupos A e B
+
+O QUE PRECISA SER FEITO
+Você deve produzir, para os pontos 1 e 2 acima:
+a. Um parágrafo de resposta contendo os números necessários e explicando a sua resposta usando testes de hipótese via pemutação. O parágrafo deve ser estilo o que você colocaria em um artigo - claro, formal e contendo as estatísticas e termos necessários (p-valor, se foram usadas permutações, qual era a estatística do teste, etc.).
+b. Um parágrafo de resposta contendo os números necessários e explicando a sua resposta usando ICs. O parágrafo deve ser estilo o que você colocaria em um artigo - claro, formal e contendo as estatísticas e termos necessários (nível de confiança, limites do IC, etc.).
+c. Um parágrafo que comenta se/como os pontos a e b acima concordam, e que compara os dois parágrafos em termos de informação e utilidade para alguém tomando decisões na wikimedia.
+
+
+```{r}
+buscas <- read_csv("../data/search_data.csv")
+buscas <- buscas %>%
+    mutate(date = round_date(session_start_date, unit = "day")) %>%
+    group_by(group, date) %>%
+    summarise(clickthrough_rate_mean = mean(sum(num_clicks > 0)/n()), zero_results = sum(results == 0)/n())
+    
+
+grupoA_cr <- buscas %>%
+    filter(group == "a") %>%
+    pull(clickthrough_rate_mean)
+
+grupoB_cr <- buscas %>%
+    filter(group == "b") %>%
+    pull(clickthrough_rate_mean)
+
+grupoA_zr <- buscas %>%
+    filter(group == "a") %>%
+    pull(zero_results)
+
+grupoB_zr <- buscas %>%
+    filter(group == "b") %>%
+    pull(zero_results)
+```
+
+```{r}
+permTS(grupoA_cr, grupoB_cr)
+```
+
+```{r}
+theta_diferenca_grupos <- function(d,i){
+    grupos = d %>%
+        slice(i) %>%
+        group_by(group) %>%
+        summarise(mean = mean(clickthrough_rate_mean))
+    grupoA = grupos %>% filter(group == "a") %>% pull(mean)
+    grupoB = grupos %>% filter(group == "b") %>% pull(mean)
+    grupoA - grupoB
+}
+
+theta_c_grupos = theta_diferenca_grupos(buscas, 1:NROW(buscas))
+
+booted <- boot(data = buscas, 
+               statistic = theta_diferenca_grupos, 
+               R = 4000)
+ci = tidy(booted, 
+          conf.level = .95,
+          conf.method = "bca",
+          conf.int = TRUE)
+glimpse(ci)
+```
+
+**A diferença entre clickthrough rate dos grupos A e B:** 
+    Para o teste feito via permutação usando aproximação assintótica, o p valor é de `0.05852`. Por definição, em testes de hipótese, pode-se rejeitar a hipótese nula a 5% caso o valor-p seja menor que 5%. Então, pode-se dizer que temos uma evidência sugestiva contra a hipótese nula que a média entre o clicktrough do grupo A menos a do grupo B é igual a zero. Também, pela estimativa das amostras temos que `média do clickthrough do grupo A - média do clickthrough do grupo B = 0.1372949`. 
+    Para o teste com intervalo de confiança feito com confiança de 95%, a média calculada deu `0.1372949` para um intervalo [0.1229, 0.1566]. O resultado similar ao teste via permutação nos dá forte indício que há uma diferença entre os clickthrough rate dos grupos A e B.
+    
+**A diferença na proporção buscas com zero resultados nos grupos A e B:**
