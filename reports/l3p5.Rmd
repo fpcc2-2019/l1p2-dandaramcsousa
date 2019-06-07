@@ -83,4 +83,33 @@ glimpse(ci)
     Para o teste feito via permutação usando aproximação assintótica, o p valor é de `0.05852`. Por definição, em testes de hipótese, pode-se rejeitar a hipótese nula a 5% caso o valor-p seja menor que 5%. Então, pode-se dizer que temos uma evidência sugestiva contra a hipótese nula que a média entre o clicktrough do grupo A menos a do grupo B é igual a zero. Também, pela estimativa das amostras temos que `média do clickthrough do grupo A - média do clickthrough do grupo B = 0.1372949`. 
     Para o teste com intervalo de confiança feito com confiança de 95%, a média calculada deu `0.1372949` para um intervalo [0.1229, 0.1566]. O resultado similar ao teste via permutação nos dá forte indício que há uma diferença entre os clickthrough rate dos grupos A e B.
     
+```{r}
+permTS(grupoA_zr, grupoB_zr)
+```
+
+```{r}
+theta_diferenca_grupos_zr <- function(d,i){
+    grupos = d %>%
+        slice(i) %>%
+        group_by(group) %>%
+        summarise(mean_zr = mean(zero_results))
+    grupoA = grupos %>% filter(group == "a") %>% pull(mean_zr)
+    grupoB = grupos %>% filter(group == "b") %>% pull(mean_zr)
+    grupoA - grupoB
+}
+
+theta_c_grupos_zr = theta_diferenca_grupos(buscas, 1:NROW(buscas))
+
+booted_zr <- boot(data = buscas, 
+               statistic = theta_diferenca_grupos_zr, 
+               R = 4000)
+ci_zr = tidy(booted_zr, 
+          conf.level = .95,
+          conf.method = "bca",
+          conf.int = TRUE)
+glimpse(ci_zr)
+```
+    
 **A diferença na proporção buscas com zero resultados nos grupos A e B:**
+    Para o teste feito via permutação usando aproximação assintótica, o p valor é de `0.6801`. Por definição, em testes de hipótese, pode-se rejeitar a hipótese nula a 5% caso o valor-p seja menor que 5%. Então, pode-se dizer que temos uma evidência sugestiva contra a hipótese nula que a média entre a proporção de buscas com zero resultado do grupo A menos a do grupo B é igual a zero. Também, pela estimativa das amostras temos que `a diferença na proporção de buscas com zero resultados no grupo A e no grupo B = -0.00186383`. 
+    Para o teste com intervalo de confiança feito com confiança de 95%, a média calculada deu `-0.00186383` para um intervalo [-0.01000935, 0.005889113]. O resultado similar ao teste via permutação nos dá forte indício que há uma diferença na proporção de buscas com zero resultados no grupo A e no grupo B. Como esse intervalo de confiança toca o zero também é possível que não haja diferença alguma.
